@@ -2623,10 +2623,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _maxSpeed: 90
+  _maxReverseSpeed: 45
   _accelerationMultiplier: 2
-  _motorForce: 30
   _breakForce: 350
-  steeringSpeed: 0.5
   _maxSteerAngle: 27
   _wheels:
     data:
@@ -2646,9 +2645,9 @@ MonoBehaviour:
       Value:
         WheelCollider: {fileID: 926513326}
         WheelMesh: {fileID: 926513325}
-  carSpeed: 0
-  isDrifting: 0
-  isTractionLocked: 0
+  _carSpeed: 0
+  _isDrifting: 0
+  _isTractionLocked: 0
 --- !u!1 &926513325 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2077481708272809950, guid: 79d0ca8b77e301442afdb49f102e8aed,

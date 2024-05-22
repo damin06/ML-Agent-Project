@@ -603,8 +603,10 @@ public class PrometeoCarController : MonoBehaviour
         DriftCarPS();
       }
       // The following part resets the throttle power to 0 smoothly.
-      if(throttleAxis != 0f){
-        if(throttleAxis > 0f){
+      if(throttleAxis != 0f)
+        {
+        if(throttleAxis > 0f)
+            {
           throttleAxis = throttleAxis - (Time.deltaTime * 10f);
         }else if(throttleAxis < 0f){
             throttleAxis = throttleAxis + (Time.deltaTime * 10f);

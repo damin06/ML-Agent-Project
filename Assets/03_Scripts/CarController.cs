@@ -81,6 +81,11 @@ public class CarController : MonoBehaviour
         Acceleration();
         HandleSteering();
         UpdateWheels();
+
+        if(horizontalInput == 0 && _steeringAxis != 0)
+        {
+            ResetSteeringAngle();
+        }
     }
 
     private void GetInput()
@@ -93,11 +98,6 @@ public class CarController : MonoBehaviour
 
         // Breaking Input
         isBreaking = Input.GetKey(KeyCode.Space);
-
-        if (Input.GetKey(KeyCode.W))
-        {
-            Acceleration();
-        }
     }
 
     private void Acceleration()
@@ -152,6 +152,40 @@ public class CarController : MonoBehaviour
     private void HandleSteering()
     {
         _steeringAxis = Mathf.Clamp(_steeringAxis + horizontalInput * (Time.deltaTime * 10 * _steeringSpeed), -1, 1);
+
+        var steeringAngle = _steeringAxis * _maxSteerAngle;
+
+        _wheels[WheelPos.FrontLeft].wheelCollider.steerAngle =
+            Mathf.Lerp
+            (
+                _wheels[WheelPos.FrontLeft].wheelCollider.steerAngle,
+                steeringAngle,
+                _steeringSpeed
+            );
+
+        _wheels[WheelPos.FrontRight].wheelCollider.steerAngle =
+            Mathf.Lerp
+            (
+                _wheels[WheelPos.FrontRight].wheelCollider.steerAngle,
+                steeringAngle,
+                _steeringSpeed
+            );
+    }
+
+    public void ResetSteeringAngle()
+    {
+        if (_steeringAxis < 0f)
+        {
+            _steeringAxis = _steeringAxis + (Time.deltaTime * 10f * _steeringSpeed);
+        }
+        else if (_steeringAxis > 0f)
+        {
+            _steeringAxis = _steeringAxis - (Time.deltaTime * 10f * _steeringSpeed);
+        }
+        if (Mathf.Abs(_wheels[WheelPos.FrontLeft].wheelCollider.steerAngle) < 1f)
+        {
+            _steeringAxis = 0f;
+        }
 
         var steeringAngle = _steeringAxis * _maxSteerAngle;
 
