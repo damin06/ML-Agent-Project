@@ -11,8 +11,8 @@ TagManager:
   - 
   - Water
   - UI
-  - 
-  - 
+  - Cone
+  - Vehicle
   - PostProcessing
   - Ground
   - Environment
@@ -20,7 +20,7 @@ TagManager:
   - CrashObject
   - Kart
   - TrainingCheckpoints
-  - 
+  - Wall
   - 
   - 
   - 

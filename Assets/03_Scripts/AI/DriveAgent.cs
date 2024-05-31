@@ -1,44 +1,23 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.MLAgents;
+using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Sensors;
 using UnityEngine;
 
-public enum WheelPos
-{
-    FrontLeft,
-    FrontRight,
-    RearLeft,
-    RearRight,
-}
-
-[System.Serializable]
-public struct Wheel
-{
-    [SerializeField] private WheelCollider WheelCollider;
-    public WheelCollider wheelCollider => WheelCollider;
-
-    [SerializeField] private GameObject WheelMesh;
-    public GameObject wheelMesh => WheelMesh;
-
-    [SerializeField] private ParticleSystem WheelParticle;
-    public ParticleSystem wheelParticle => WheelParticle;
-
-    [SerializeField] private TrailRenderer WheelTraill;
-    public TrailRenderer wheelTraill => WheelTraill;
-}
-
-public class CarController : MonoBehaviour
+public class DriveAgent : Agent
 {
     [Header("CAR SETUP")]
 
     [Range(20, 190)]
-    [SerializeField]private int _maxSpeed = 90;
+    [SerializeField] private int _maxSpeed = 90;
 
     [Range(10, 120)]
-    [SerializeField]private int _maxReverseSpeed = 45;
+    [SerializeField] private int _maxReverseSpeed = 45;
 
     [Range(1, 10)]
-    [SerializeField]private int _accelerationMultiplier = 2;
-    
+    [SerializeField] private int _accelerationMultiplier = 2;
+
     [Range(100, 600)]
     [SerializeField] private float _breakForce = 350;
 
@@ -66,9 +45,9 @@ public class CarController : MonoBehaviour
 
     //Data 
     [HideInInspector]
-    public float _carSpeed; 
+    public float _carSpeed;
     [HideInInspector]
-    public bool _isDrifting; 
+    public bool _isDrifting;
     [HideInInspector]
     public bool _isTractionLocked;
 
@@ -89,7 +68,8 @@ public class CarController : MonoBehaviour
     WheelFrictionCurve RRwheelFriction;
     float RRWextremumSlip;
 
-    private void Awake()
+
+    public override void Initialize()
     {
         _rb = GetComponent<Rigidbody>();
 
@@ -126,82 +106,183 @@ public class CarController : MonoBehaviour
         RRwheelFriction.stiffness = _wheels[WheelPos.RearRight].wheelCollider.sidewaysFriction.stiffness;
     }
 
+    public override void OnEpisodeBegin()
+    {
+        _rb.velocity = Vector3.zero;
+
+        // Wheel Reset
+        _wheels[WheelPos.FrontLeft].wheelCollider.steerAngle = 0;
+        _wheels[WheelPos.FrontRight].wheelCollider.steerAngle = 0;
+
+        var _dict = _wheels.GetDict();
+
+        foreach (var _whel in _dict)
+        {
+            _whel.Value.wheelCollider.brakeTorque = 0;
+            _whel.Value.wheelCollider.motorTorque = 0;
+        }
+
+        //CancelInvoke("DecelerateCar");
+
+
+        // Drift Reset
+        FLwheelFriction.extremumSlip = FLWextremumSlip;
+        _wheels[WheelPos.FrontLeft].wheelCollider.sidewaysFriction = FLwheelFriction;
+
+        FRwheelFriction.extremumSlip = FRWextremumSlip;
+        _wheels[WheelPos.FrontRight].wheelCollider.sidewaysFriction = FRwheelFriction;
+
+        RLwheelFriction.extremumSlip = RLWextremumSlip;
+        _wheels[WheelPos.RearLeft].wheelCollider.sidewaysFriction = RLwheelFriction;
+
+        RRwheelFriction.extremumSlip = RRWextremumSlip;
+        _wheels[WheelPos.RearRight].wheelCollider.sidewaysFriction = RRwheelFriction;
+
+        _driftingAxis = 0f;
+
+    }
+
+    public override void OnActionReceived(ActionBuffers actions)
+    {
+        var _Discrete = actions.DiscreteActions;
+
+
+        // Steering
+        switch (_Discrete[0])
+        {
+            case 0:
+                if(_steeringAxis != 0)
+                    ResetSteeringAngle();
+                break;
+            case 1:
+                HandleSteering(-1);
+                break;
+            case 2:
+                HandleSteering(1);
+                break;
+        }
+
+        // Drift
+        switch(_Discrete[1])
+        {
+            case 0:
+                if(FLwheelFriction.extremumSlip > FLWextremumSlip)
+                    RecoverTraction();
+                break;
+            case 1:
+                HandBreak();
+                break;
+        }
+    }
+
+    public override void CollectObservations(VectorSensor sensor)
+    {
+
+    }
+
+    public override void Heuristic(in ActionBuffers actionsOut)
+    {
+        var _Discrete = actionsOut.DiscreteActions;
+        Debug.Log("Heuristic");
+        if (Input.GetKey(KeyCode.A))
+        {
+            _Discrete[0] = 1;
+        }
+        else if (Input.GetKey(KeyCode.D))
+        {
+            _Discrete[0] = 2;
+        }
+        else 
+        {
+            _Discrete[0] = 0;
+        }
+
+        if (Input.GetKey(KeyCode.Space))
+        {
+            _Discrete[1] = 1;
+        }
+        else if (Input.GetKeyUp(KeyCode.Space))
+        {
+            _Discrete[1] = 0;
+        }
+    }
+
     private void Update()
     {
         _carSpeed = (2 * Mathf.PI * _wheels[WheelPos.FrontRight].wheelCollider.radius * _wheels[WheelPos.FrontLeft].wheelCollider.rpm * 60) / 1000;
         _localVelocityX = transform.InverseTransformDirection(_rb.velocity).x;
         _localVelocityZ = transform.InverseTransformDirection(_rb.velocity).z;
 
-        GetInput();
+        //GetInput();
     }
 
     private void FixedUpdate()
     {
-        Acceleration();
-        HandleSteering();
+        Acceleration(1);
         UpdateWheels();
+        //HandleSteering();
 
-        if(horizontalInput == 0 && _steeringAxis != 0)
-        {
-            ResetSteeringAngle();
-        }
+        //if (horizontalInput == 0 && _steeringAxis != 0)
+        //{
+        //    ResetSteeringAngle();
+        //}
 
-        if (isBreaking)
-        {
-            CancelInvoke("DecelerateCar");
-            HandBreak();
-            deceleratingCar = false;
-        }
+        //if (isBreaking)
+        //{
+        //    CancelInvoke("DecelerateCar");
+        //    HandBreak();
+        //    deceleratingCar = false;
+        //}
 
-        if (verticalInput != 0)
-        {
-            CancelInvoke("DecelerateCar");
-            deceleratingCar = false;
-        }
+        //if (verticalInput != 0)
+        //{
+        //    CancelInvoke("DecelerateCar");
+        //    deceleratingCar = false;
+        //}
 
-        if (verticalInput == 0 && !isBreaking && !deceleratingCar)
-        {
-            InvokeRepeating("DecelerateCar", 0f, 0.1f);
-            deceleratingCar = true;
-        }
+        //if (verticalInput == 0 && !isBreaking && !deceleratingCar)
+        //{
+        //    InvokeRepeating("DecelerateCar", 0f, 0.1f);
+        //    deceleratingCar = true;
+        //}
     }
 
-    private void GetInput()
-    {
-        // Steering Input
-        horizontalInput = Input.GetAxis("Horizontal");
-        
-        // Acceleration Input
-        verticalInput = Input.GetAxis("Vertical");
+    //private void GetInput()
+    //{
+    //    // Steering Input
+    //    horizontalInput = Input.GetAxis("Horizontal");
 
-        // Breaking Input
-        isBreaking = Input.GetKey(KeyCode.Space);
+    //    // Acceleration Input
+    //    verticalInput = Input.GetAxis("Vertical");
 
-        if(Input.GetKeyUp(KeyCode.Space))
-        {
-            RecoverTraction();
-        }
-    }
+    //    // Breaking Input
+    //    isBreaking = Input.GetKey(KeyCode.Space);
 
-    private void Acceleration()
+    //    if (Input.GetKeyUp(KeyCode.Space))
+    //    {
+    //        RecoverTraction();
+    //    }
+    //}
+
+    private void Acceleration(float _InputVertical)
     {
         CarParticle();
 
-        _throttleAxis = Mathf.Clamp(_throttleAxis + verticalInput * (Time.deltaTime * 3), -1, 1);
+        _throttleAxis = Mathf.Clamp(_throttleAxis + _InputVertical * (Time.deltaTime * 3), -1, 1);
 
-        if(_localVelocityZ < -1 && verticalInput > 0)
+        if (_localVelocityZ < -1 && _InputVertical > 0)
         {
             ApplyBreaking();
             //return;
         }
 
-        if(_localVelocityZ > 1 && verticalInput < 0)
+        if (_localVelocityZ > 1 && _InputVertical < 0)
         {
             ApplyBreaking();
             //return;
         }
 
-        float MaxSpeed = verticalInput > 0 ? _maxSpeed : _maxReverseSpeed;
+        float MaxSpeed = _InputVertical > 0 ? _maxSpeed : _maxReverseSpeed;
 
         if (Mathf.Abs(Mathf.RoundToInt(_carSpeed)) < MaxSpeed)
         {
@@ -226,7 +307,7 @@ public class CarController : MonoBehaviour
 
     private void DecelerateCar()
     {
-        if(verticalInput != 0)
+        if (verticalInput != 0)
         {
             CancelInvoke("DecelerateCar");
             return;
@@ -250,8 +331,8 @@ public class CarController : MonoBehaviour
             }
         }
 
-        _rb.velocity *=  1f / (1f + (0.025f * decelerationMultiplier));
-        
+        _rb.velocity *= 1f / (1f + (0.025f * decelerationMultiplier));
+
         var _dict = _wheels.GetDict();
 
         foreach (var _wheel in _dict)
@@ -278,9 +359,9 @@ public class CarController : MonoBehaviour
         }
     }
 
-    private void HandleSteering()
+    private void HandleSteering(float _inputHorizontal)
     {
-        _steeringAxis = Mathf.Clamp(_steeringAxis + horizontalInput * (Time.deltaTime * 10 * _steeringSpeed), -1, 1);
+        _steeringAxis = Mathf.Clamp(_steeringAxis + _inputHorizontal * (Time.deltaTime * 10 * _steeringSpeed), -1, 1);
 
         var steeringAngle = _steeringAxis * _maxSteerAngle;
 
@@ -422,7 +503,7 @@ public class CarController : MonoBehaviour
         {
             foreach (var _item in _dict)
             {
-                if(_item.Value.wheelParticle != null)
+                if (_item.Value.wheelParticle != null)
                     _item.Value.wheelParticle.Play();
             }
         }
@@ -457,7 +538,7 @@ public class CarController : MonoBehaviour
     {
         var _dict = _wheels.GetDict();
 
-        foreach(var _item in _dict)
+        foreach (var _item in _dict)
         {
             UpdateSingleWheel(_item.Value.wheelCollider, _item.Value.wheelMesh.transform);
         }
