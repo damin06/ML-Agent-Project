@@ -4,15 +4,24 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    public static GameManager Instance = null;
+
+    private List<CheckPoint> _checkPoints;
+
+    private Dictionary<Transform, int> _agentsCheckpointIndex = new Dictionary<Transform, int>();
+
+    private void Awake()
     {
-        
+        if(Instance == null)
+            Instance = this;
+        else
+            Destroy(Instance);
+
+        foreach(Transform _item in transform)
+        {
+            _checkPoints.Add(_item.GetComponent<CheckPoint>());
+        }
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+  
 }

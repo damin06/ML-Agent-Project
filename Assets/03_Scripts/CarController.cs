@@ -43,7 +43,7 @@ public class CarController : MonoBehaviour
     [SerializeField] private float _breakForce = 350;
 
     [Range(0.1f, 1f)]
-    private float _steeringSpeed = 0.5f;
+    [SerializeField] private float _steeringSpeed = 0.5f;
 
     [Range(10, 45)]
     [SerializeField] private float _maxSteerAngle = 27;
@@ -54,9 +54,13 @@ public class CarController : MonoBehaviour
     [Range(1, 10)]
     [SerializeField] private int decelerationMultiplier = 2;
 
+    [SerializeField] private float _antiRoll = 5000;
+
     [SerializeField] private SerializableDict<WheelPos, Wheel> _wheels;
 
     [SerializeField] private Material _ConeMaterial;
+
+    [SerializeField] private Vector3 _centerOfMass;
 
     private float horizontalInput, verticalInput;
     private float currentSteerAngle, currentbreakForce;
@@ -92,6 +96,8 @@ public class CarController : MonoBehaviour
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
+
+        _rb.centerOfMass = _centerOfMass;
 
         FLwheelFriction = new WheelFrictionCurve();
         FLwheelFriction.extremumSlip = _wheels[WheelPos.FrontLeft].wheelCollider.sidewaysFriction.extremumSlip;
@@ -140,8 +146,9 @@ public class CarController : MonoBehaviour
         Acceleration();
         HandleSteering();
         UpdateWheels();
+        //Stabilizer();
 
-        if(horizontalInput == 0 && _steeringAxis != 0)
+        if (horizontalInput == 0 && _steeringAxis != 0)
         {
             ResetSteeringAngle();
         }
@@ -183,6 +190,30 @@ public class CarController : MonoBehaviour
         }
     }
 
+    private void Stabilizer()
+    {
+        WheelHit hit;
+        float travelL = 1;
+        float travelR = 1;
+
+        var groundedL = _wheels[WheelPos.FrontLeft].wheelCollider.GetGroundHit(out hit);
+        if (groundedL)
+            travelL = (-_wheels[WheelPos.FrontLeft].wheelCollider.transform.InverseTransformPoint(hit.point).y - _wheels[WheelPos.FrontLeft].wheelCollider.radius) / _wheels[WheelPos.FrontLeft].wheelCollider.suspensionDistance;
+
+        var groundedR = _wheels[WheelPos.FrontRight].wheelCollider.GetGroundHit(out hit);
+        if (groundedR)
+            travelR = (-_wheels[WheelPos.FrontRight].wheelCollider.transform.InverseTransformPoint(hit.point).y - _wheels[WheelPos.FrontRight].wheelCollider.radius) / _wheels[WheelPos.FrontRight].wheelCollider.suspensionDistance;
+
+        var antiRollForce = (travelL - travelR) * _antiRoll;
+
+        if (groundedL)
+            _rb.AddForceAtPosition(_wheels[WheelPos.FrontLeft].wheelCollider.transform.up * -antiRollForce,
+                   _wheels[WheelPos.FrontLeft].wheelCollider.transform.position);
+        if (groundedR)
+            _rb.AddForceAtPosition(_wheels[WheelPos.FrontRight].wheelCollider.transform.up * antiRollForce,
+                   _wheels[WheelPos.FrontLeft].wheelCollider.transform.position);
+    }
+
     private void Acceleration()
     {
         CarParticle();
@@ -192,13 +223,19 @@ public class CarController : MonoBehaviour
         if(_localVelocityZ < -1 && verticalInput > 0)
         {
             ApplyBreaking();
-            //return;
+
+            _throttleAxis = 0;
+            _throttleAxis = Mathf.Clamp(_throttleAxis + verticalInput * (Time.deltaTime * 3), -1, 1);
+            return;
         }
 
         if(_localVelocityZ > 1 && verticalInput < 0)
         {
             ApplyBreaking();
-            //return;
+
+            _throttleAxis = 0;
+            _throttleAxis = Mathf.Clamp(_throttleAxis + verticalInput * (Time.deltaTime * 3), -1, 1);
+            return;
         }
 
         float MaxSpeed = verticalInput > 0 ? _maxSpeed : _maxReverseSpeed;
@@ -259,7 +296,7 @@ public class CarController : MonoBehaviour
             _wheel.Value.wheelCollider.motorTorque = 0;
         }
 
-        Debug.Log($"rb : {_rb.velocity} , wheel : {_wheels[WheelPos.FrontLeft].wheelCollider.motorTorque}");
+        //Debug.Log($"rb : {_rb.velocity} , wheel : {_wheels[WheelPos.FrontLeft].wheelCollider.motorTorque}");
         if (_rb.velocity.magnitude < 0.25f)
         {
             _rb.velocity = Vector3.zero;
@@ -269,7 +306,7 @@ public class CarController : MonoBehaviour
 
     private void ApplyBreaking()
     {
-        Debug.Log("break" + Time.time);
+        //Debug.Log("break" + Time.time);
         var _dict = _wheels.GetDict();
 
         foreach (var _item in _dict)
@@ -470,5 +507,14 @@ public class CarController : MonoBehaviour
         wheelCollider.GetWorldPose(out pos, out rot);
         wheelTransform.rotation = rot;
         wheelTransform.position = pos;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+
+
+        //Vector3 vec = transform.InverseTransformDirection(collision.transform.position);
+        Vector3 vec = transform.InverseTransformPoint(collision.transform.position);
+        Debug.Log(vec);
     }
 }

@@ -22,7 +22,7 @@ public class DriveAgent : Agent
     [SerializeField] private float _breakForce = 350;
 
     [Range(0.1f, 1f)]
-    private float _steeringSpeed = 0.5f;
+    [SerializeField] private float _steeringSpeed = 0.5f;
 
     [Range(10, 45)]
     [SerializeField] private float _maxSteerAngle = 27;
@@ -109,7 +109,7 @@ public class DriveAgent : Agent
     public override void OnEpisodeBegin()
     {
         _rb.velocity = Vector3.zero;
-
+        
         // Wheel Reset
         _wheels[WheelPos.FrontLeft].wheelCollider.steerAngle = 0;
         _wheels[WheelPos.FrontRight].wheelCollider.steerAngle = 0;
@@ -140,6 +140,7 @@ public class DriveAgent : Agent
 
         _driftingAxis = 0f;
 
+        //transform.position = GameManager.Instance.GetRandomPosition();
     }
 
     public override void OnActionReceived(ActionBuffers actions)
@@ -551,5 +552,16 @@ public class DriveAgent : Agent
         wheelCollider.GetWorldPose(out pos, out rot);
         wheelTransform.rotation = rot;
         wheelTransform.position = pos;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if(collision.gameObject.layer == LayerMask.NameToLayer("Cone"))
+        {
+            AddReward(-1);
+        }
+
+        Vector3 vec = transform.InverseTransformDirection(collision.transform.position);
+        //if (vec.z )
     }
 }
