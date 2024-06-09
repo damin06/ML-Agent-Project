@@ -141,6 +141,11 @@ public class DriveAgent : Agent
         _driftingAxis = 0f;
 
         //transform.position = GameManager.Instance.GetRandomPosition();
+
+        if(transform.parent.parent.TryGetComponent(out VehicleArea _area))
+        {
+            transform.position = VehicleArea.GetSpawnPos(_area._minPos, _area._maxPos);
+        }
     }
 
     public override void OnActionReceived(ActionBuffers actions)
@@ -556,12 +561,42 @@ public class DriveAgent : Agent
 
     private void OnCollisionEnter(Collision collision)
     {
-        if(collision.gameObject.layer == LayerMask.NameToLayer("Cone"))
+        //if (collision.gameObject.layer == LayerMask.NameToLayer("Cone"))
+        //{
+        //    AddReward(-1);
+        //}
+
+        //Vector3 vec = transform.InverseTransformPoint(collision.transform.position);
+
+        //if (collision.gameObject.layer == LayerMask.NameToLayer("Wall"))
+        //{
+
+        //}
+
+        foreach (ContactPoint contact in collision.contacts)
         {
-            AddReward(-1);
+            Vector3 _hitPos = transform.InverseTransformPoint(contact.point);
+            Debug.Log("hit Pos : " + _hitPos);
+
+            if (_hitPos.z > 2 && Mathf.Abs(_hitPos.x) <= 1)
+            {
+                if (contact.otherCollider.gameObject.tag == "Vehicle" || contact.otherCollider.gameObject.tag == "Wall")
+                {
+                    AddReward(-100);
+                    EndEpisode();
+                }
+            }
+            else
+            {
+                if (contact.otherCollider.gameObject.tag == "Vehicle")
+                {
+                    AddReward(100);
+                }
+
+            }
+
         }
 
-        Vector3 vec = transform.InverseTransformDirection(collision.transform.position);
         //if (vec.z )
     }
 }

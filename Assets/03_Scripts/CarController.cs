@@ -179,7 +179,8 @@ public class CarController : MonoBehaviour
         horizontalInput = Input.GetAxis("Horizontal");
         
         // Acceleration Input
-        verticalInput = Input.GetAxis("Vertical");
+        //verticalInput = Input.GetAxis("Vertical");
+        verticalInput = 1;
 
         // Breaking Input
         isBreaking = Input.GetKey(KeyCode.Space);
@@ -515,6 +516,35 @@ public class CarController : MonoBehaviour
 
         //Vector3 vec = transform.InverseTransformDirection(collision.transform.position);
         Vector3 vec = transform.InverseTransformPoint(collision.transform.position);
-        Debug.Log(vec);
+        //Debug.Log("no : " + vec);
+        //Debug.Log(Mathf.Atan2(vec.z, vec.x) * Mathf.Rad2Deg);
+
+
+        //Debug.Log(collision.contacts.);
+        foreach (ContactPoint contact in collision.contacts)
+        {
+            Vector3 _hitPos = transform.InverseTransformPoint(contact.point);
+            Debug.Log("hit Pos : " + _hitPos);
+
+            if(_hitPos.z > 2 && Mathf.Abs(_hitPos.x) <= 1)
+            {
+                if (contact.otherCollider.gameObject.tag == "Vehicle")
+                {
+                    
+                }
+            }
+            //Debug.DrawRay(contact.point, contact.normal, Color.white);
+            //Debug.Log(Mathf.Atan2(contact.point.z, contact.point.x) * Mathf.Rad2Deg);
+
+        }
+
+        //Debug.Log(collision.contacts[0].point);
+        //    if (vec.z > 2.7f)
+        //{
+        //    Debug.Log("hit : " + vec);
+        //}
+        //else
+        //{
+        //}
     }
 }
