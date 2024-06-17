@@ -109,7 +109,8 @@ public class DriveAgent : Agent
     public override void OnEpisodeBegin()
     {
         _rb.velocity = Vector3.zero;
-        
+        transform.rotation = new Quaternion(0, Random.Range(0, 360), 0, 0);
+
         // Wheel Reset
         _wheels[WheelPos.FrontLeft].wheelCollider.steerAngle = 0;
         _wheels[WheelPos.FrontRight].wheelCollider.steerAngle = 0;
@@ -122,7 +123,14 @@ public class DriveAgent : Agent
             _whel.Value.wheelCollider.motorTorque = 0;
         }
 
-        //CancelInvoke("DecelerateCar");
+        foreach (var _item in _dict)
+        {
+            if (_item.Value.wheelTraill != null)
+            {
+                _item.Value.wheelTraill.emitting = false;
+                _item.Value.wheelTraill.Clear();
+            }
+        }
 
 
         // Drift Reset
@@ -147,36 +155,41 @@ public class DriveAgent : Agent
             transform.position = VehicleArea.GetSpawnPos(_area._minPos, _area._maxPos);
         }
     }
-
+    private float _lastDriftTime = 0;
     public override void OnActionReceived(ActionBuffers actions)
     {
         var _Discrete = actions.DiscreteActions;
-
+        SetReward(-0.2f);
 
         // Steering
         switch (_Discrete[0])
         {
             case 0:
-                if(_steeringAxis != 0)
-                    ResetSteeringAngle();
-                break;
-            case 1:
                 HandleSteering(-1);
                 break;
-            case 2:
+            case 1:
                 HandleSteering(1);
+                break;
+            case 2:
+                ResetSteeringAngle();
                 break;
         }
 
+        Debug.Log("_Discrete : " + _Discrete[0].ToString());
         // Drift
         switch(_Discrete[1])
         {
             case 0:
-                if(FLwheelFriction.extremumSlip > FLWextremumSlip)
-                    RecoverTraction();
-                break;
             case 1:
-                HandBreak();
+                //if(FLwheelFriction.extremumSlip > FLWextremumSlip)
+                 RecoverTraction();
+                break;
+            case 2:
+                if(_lastDriftTime + 0.1f < Time.time)
+                {
+                    HandBreak();
+                    _lastDriftTime = Time.time;
+                }
                 break;
         }
     }
@@ -189,7 +202,7 @@ public class DriveAgent : Agent
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         var _Discrete = actionsOut.DiscreteActions;
-        Debug.Log("Heuristic");
+
         if (Input.GetKey(KeyCode.A))
         {
             _Discrete[0] = 1;
@@ -311,52 +324,50 @@ public class DriveAgent : Agent
         }
     }
 
-    private void DecelerateCar()
-    {
-        if (verticalInput != 0)
-        {
-            CancelInvoke("DecelerateCar");
-            return;
-        }
+    //private void DecelerateCar()
+    //{
+    //    if (verticalInput != 0)
+    //    {
+    //        CancelInvoke("DecelerateCar");
+    //        return;
+    //    }
 
-        CarParticle();
+    //    CarParticle();
 
-        if (_throttleAxis != 0f)
-        {
-            if (_throttleAxis > 0f)
-            {
-                _throttleAxis -= Time.deltaTime * 10f;
-            }
-            else if (_throttleAxis < 0f)
-            {
-                _throttleAxis += Time.deltaTime * 10f;
-            }
-            if (Mathf.Abs(_throttleAxis) < 0.15f)
-            {
-                _throttleAxis = 0f;
-            }
-        }
+    //    if (_throttleAxis != 0f)
+    //    {
+    //        if (_throttleAxis > 0f)
+    //        {
+    //            _throttleAxis -= Time.deltaTime * 10f;
+    //        }
+    //        else if (_throttleAxis < 0f)
+    //        {
+    //            _throttleAxis += Time.deltaTime * 10f;
+    //        }
+    //        if (Mathf.Abs(_throttleAxis) < 0.15f)
+    //        {
+    //            _throttleAxis = 0f;
+    //        }
+    //    }
 
-        _rb.velocity *= 1f / (1f + (0.025f * decelerationMultiplier));
+    //    _rb.velocity *= 1f / (1f + (0.025f * decelerationMultiplier));
 
-        var _dict = _wheels.GetDict();
+    //    var _dict = _wheels.GetDict();
 
-        foreach (var _wheel in _dict)
-        {
-            _wheel.Value.wheelCollider.motorTorque = 0;
-        }
+    //    foreach (var _wheel in _dict)
+    //    {
+    //        _wheel.Value.wheelCollider.motorTorque = 0;
+    //    }
 
-        Debug.Log($"rb : {_rb.velocity} , wheel : {_wheels[WheelPos.FrontLeft].wheelCollider.motorTorque}");
-        if (_rb.velocity.magnitude < 0.25f)
-        {
-            _rb.velocity = Vector3.zero;
-            CancelInvoke("DecelerateCar");
-        }
-    }
+    //    if (_rb.velocity.magnitude < 0.25f)
+    //    {
+    //        _rb.velocity = Vector3.zero;
+    //        CancelInvoke("DecelerateCar");
+    //    }
+    //}
 
     private void ApplyBreaking()
     {
-        Debug.Log("break" + Time.time);
         var _dict = _wheels.GetDict();
 
         foreach (var _item in _dict)
@@ -367,7 +378,7 @@ public class DriveAgent : Agent
 
     private void HandleSteering(float _inputHorizontal)
     {
-        _steeringAxis = Mathf.Clamp(_steeringAxis + _inputHorizontal * (Time.deltaTime * 10 * _steeringSpeed), -1, 1);
+        _steeringAxis = Mathf.Clamp(_steeringAxis + (_inputHorizontal * (Time.deltaTime * 10 * _steeringSpeed)), -1, 1);
 
         var steeringAngle = _steeringAxis * _maxSteerAngle;
 
@@ -561,28 +572,15 @@ public class DriveAgent : Agent
 
     private void OnCollisionEnter(Collision collision)
     {
-        //if (collision.gameObject.layer == LayerMask.NameToLayer("Cone"))
-        //{
-        //    AddReward(-1);
-        //}
-
-        //Vector3 vec = transform.InverseTransformPoint(collision.transform.position);
-
-        //if (collision.gameObject.layer == LayerMask.NameToLayer("Wall"))
-        //{
-
-        //}
-
         foreach (ContactPoint contact in collision.contacts)
         {
             Vector3 _hitPos = transform.InverseTransformPoint(contact.point);
-            Debug.Log("hit Pos : " + _hitPos);
 
             if (_hitPos.z > 2 && Mathf.Abs(_hitPos.x) <= 1)
             {
                 if (contact.otherCollider.gameObject.tag == "Vehicle" || contact.otherCollider.gameObject.tag == "Wall")
                 {
-                    AddReward(-100);
+                    AddReward(-50);
                     EndEpisode();
                 }
             }
@@ -590,13 +588,12 @@ public class DriveAgent : Agent
             {
                 if (contact.otherCollider.gameObject.tag == "Vehicle")
                 {
-                    AddReward(100);
+                    AddReward(150);
                 }
 
             }
 
         }
 
-        //if (vec.z )
     }
 }

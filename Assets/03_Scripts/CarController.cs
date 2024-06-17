@@ -132,6 +132,11 @@ public class CarController : MonoBehaviour
         RRwheelFriction.stiffness = _wheels[WheelPos.RearRight].wheelCollider.sidewaysFriction.stiffness;
     }
 
+    private void OnEnable()
+    {
+        transform.position = VehicleArea.GetSpawnPos(VehicleArea.Instance._minPos, VehicleArea.Instance._maxPos);
+    }
+
     private void Update()
     {
         _carSpeed = (2 * Mathf.PI * _wheels[WheelPos.FrontRight].wheelCollider.radius * _wheels[WheelPos.FrontLeft].wheelCollider.rpm * 60) / 1000;
@@ -155,20 +160,20 @@ public class CarController : MonoBehaviour
 
         if (isBreaking)
         {
-            CancelInvoke("DecelerateCar");
+            //CancelInvoke("DecelerateCar");
             HandBreak();
             deceleratingCar = false;
         }
 
         if (verticalInput != 0)
         {
-            CancelInvoke("DecelerateCar");
+            //CancelInvoke("DecelerateCar");
             deceleratingCar = false;
         }
 
         if (verticalInput == 0 && !isBreaking && !deceleratingCar)
         {
-            InvokeRepeating("DecelerateCar", 0f, 0.1f);
+            //InvokeRepeating("DecelerateCar", 0f, 0.1f);
             deceleratingCar = true;
         }
     }
@@ -262,48 +267,48 @@ public class CarController : MonoBehaviour
         }
     }
 
-    private void DecelerateCar()
-    {
-        if(verticalInput != 0)
-        {
-            CancelInvoke("DecelerateCar");
-            return;
-        }
+    //private void DecelerateCar()
+    //{
+    //    if(verticalInput != 0)
+    //    {
+    //        //CancelInvoke("DecelerateCar");
+    //        return;
+    //    }
 
-        CarParticle();
+    //    CarParticle();
 
-        if (_throttleAxis != 0f)
-        {
-            if (_throttleAxis > 0f)
-            {
-                _throttleAxis -= Time.deltaTime * 10f;
-            }
-            else if (_throttleAxis < 0f)
-            {
-                _throttleAxis += Time.deltaTime * 10f;
-            }
-            if (Mathf.Abs(_throttleAxis) < 0.15f)
-            {
-                _throttleAxis = 0f;
-            }
-        }
+    //    if (_throttleAxis != 0f)
+    //    {
+    //        if (_throttleAxis > 0f)
+    //        {
+    //            _throttleAxis -= Time.deltaTime * 10f;
+    //        }
+    //        else if (_throttleAxis < 0f)
+    //        {
+    //            _throttleAxis += Time.deltaTime * 10f;
+    //        }
+    //        if (Mathf.Abs(_throttleAxis) < 0.15f)
+    //        {
+    //            _throttleAxis = 0f;
+    //        }
+    //    }
 
-        _rb.velocity *=  1f / (1f + (0.025f * decelerationMultiplier));
+    //    _rb.velocity *=  1f / (1f + (0.025f * decelerationMultiplier));
         
-        var _dict = _wheels.GetDict();
+    //    var _dict = _wheels.GetDict();
 
-        foreach (var _wheel in _dict)
-        {
-            _wheel.Value.wheelCollider.motorTorque = 0;
-        }
+    //    foreach (var _wheel in _dict)
+    //    {
+    //        _wheel.Value.wheelCollider.motorTorque = 0;
+    //    }
 
-        //Debug.Log($"rb : {_rb.velocity} , wheel : {_wheels[WheelPos.FrontLeft].wheelCollider.motorTorque}");
-        if (_rb.velocity.magnitude < 0.25f)
-        {
-            _rb.velocity = Vector3.zero;
-            CancelInvoke("DecelerateCar");
-        }
-    }
+    //    //Debug.Log($"rb : {_rb.velocity} , wheel : {_wheels[WheelPos.FrontLeft].wheelCollider.motorTorque}");
+    //    if (_rb.velocity.magnitude < 0.25f)
+    //    {
+    //        _rb.velocity = Vector3.zero;
+    //        CancelInvoke("DecelerateCar");
+    //    }
+    //}
 
     private void ApplyBreaking()
     {
@@ -524,13 +529,13 @@ public class CarController : MonoBehaviour
         foreach (ContactPoint contact in collision.contacts)
         {
             Vector3 _hitPos = transform.InverseTransformPoint(contact.point);
-            Debug.Log("hit Pos : " + _hitPos);
 
             if(_hitPos.z > 2 && Mathf.Abs(_hitPos.x) <= 1)
             {
-                if (contact.otherCollider.gameObject.tag == "Vehicle")
+                if (contact.otherCollider.gameObject.tag == "Vehicle" || contact.otherCollider.gameObject.tag == "Wall")
                 {
-                    
+                    Debug.Log("hit Pos : " + _hitPos);
+
                 }
             }
             //Debug.DrawRay(contact.point, contact.normal, Color.white);

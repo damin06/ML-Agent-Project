@@ -4,9 +4,19 @@ using UnityEngine;
 
 public class VehicleArea : MonoBehaviour
 {
+    public static VehicleArea Instance;
+
     public Vector3 _minPos;
     public Vector3 _maxPos;
-     
+
+    private void Awake()
+    {
+        if(Instance == null)
+            Instance = this;
+        else
+            Destroy(this);
+    }
+
     public static Vector3 GetSpawnPos(Vector3 _min, Vector3 _max)
     {
         Vector3 _newPos = Vector3.zero;

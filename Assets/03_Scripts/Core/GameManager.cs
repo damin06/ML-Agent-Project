@@ -12,6 +12,7 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        Debug.Log("È÷È÷ ³ª´Â ºä¿õ½ÅÀÌ´Ù.");
         if(Instance == null)
             Instance = this;
         else
