@@ -97,7 +97,7 @@ public class CarController : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody>();
 
-        _rb.centerOfMass = _centerOfMass;
+        //_rb.centerOfMass = _centerOfMass;
 
         FLwheelFriction = new WheelFrictionCurve();
         FLwheelFriction.extremumSlip = _wheels[WheelPos.FrontLeft].wheelCollider.sidewaysFriction.extremumSlip;
@@ -399,15 +399,19 @@ public class CarController : MonoBehaviour
         //    isDrifting = false;
         //
 
+        //FLwheelFriction.stiffness = 0.5f;
         FLwheelFriction.extremumSlip = FLWextremumSlip * handbrakeDriftMultiplier * _driftingAxis;
         _wheels[WheelPos.FrontLeft].wheelCollider.sidewaysFriction = FLwheelFriction;
 
+        //FRwheelFriction.stiffness = 0.5f;
         FRwheelFriction.extremumSlip = FRWextremumSlip * handbrakeDriftMultiplier * _driftingAxis;
         _wheels[WheelPos.FrontRight].wheelCollider.sidewaysFriction = FRwheelFriction;
 
+        //RLwheelFriction.stiffness = 0.5f;
         RLwheelFriction.extremumSlip = RLWextremumSlip * handbrakeDriftMultiplier * _driftingAxis;
         _wheels[WheelPos.RearLeft].wheelCollider.sidewaysFriction = RLwheelFriction;
 
+        //RRwheelFriction.stiffness = 0.5f;
         RRwheelFriction.extremumSlip = RRWextremumSlip * handbrakeDriftMultiplier * _driftingAxis;
         _wheels[WheelPos.RearRight].wheelCollider.sidewaysFriction = RRwheelFriction;
 
@@ -517,39 +521,28 @@ public class CarController : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-
-
-        //Vector3 vec = transform.InverseTransformDirection(collision.transform.position);
-        Vector3 vec = transform.InverseTransformPoint(collision.transform.position);
-        //Debug.Log("no : " + vec);
-        //Debug.Log(Mathf.Atan2(vec.z, vec.x) * Mathf.Rad2Deg);
-
-
-        //Debug.Log(collision.contacts.);
         foreach (ContactPoint contact in collision.contacts)
         {
             Vector3 _hitPos = transform.InverseTransformPoint(contact.point);
 
-            if(_hitPos.z > 2 && Mathf.Abs(_hitPos.x) <= 1)
+            if (_hitPos.z > 2 && Mathf.Abs(_hitPos.x) <= 1)
             {
                 if (contact.otherCollider.gameObject.tag == "Vehicle" || contact.otherCollider.gameObject.tag == "Wall")
                 {
-                    Debug.Log("hit Pos : " + _hitPos);
-
+                    VehicleArea.Instance.SpawnParticle(transform.position);
+                    VehicleArea.Instance.GoToMenu();
+                    gameObject.SetActive(false);
+                    return;
                 }
             }
-            //Debug.DrawRay(contact.point, contact.normal, Color.white);
-            //Debug.Log(Mathf.Atan2(contact.point.z, contact.point.x) * Mathf.Rad2Deg);
+            else
+            {
+                if (contact.otherCollider.gameObject.tag == "Vehicle")
+                {
+                }
+
+            }
 
         }
-
-        //Debug.Log(collision.contacts[0].point);
-        //    if (vec.z > 2.7f)
-        //{
-        //    Debug.Log("hit : " + vec);
-        //}
-        //else
-        //{
-        //}
     }
 }

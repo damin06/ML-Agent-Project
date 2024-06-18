@@ -580,8 +580,16 @@ public class DriveAgent : Agent
             {
                 if (contact.otherCollider.gameObject.tag == "Vehicle" || contact.otherCollider.gameObject.tag == "Wall")
                 {
+                    VehicleArea.Instance.SpawnParticle(transform.position);
                     AddReward(-50);
                     EndEpisode();
+
+
+                    if(collision.transform.TryGetComponent(out CarController _car))
+                    {
+                        VehicleArea.Instance.AddScore();
+                    }
+
                 }
             }
             else
